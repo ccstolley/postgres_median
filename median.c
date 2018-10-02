@@ -158,7 +158,7 @@ median_double_finalfn(PG_FUNCTION_ARGS)
 	qsort(state->d, state->nelems, sizeof(Datum), float8_cmp);
 
 	low_idx = state->nelems / 2;
-	hi_idx = state->nelems / 2 - 1;
+	hi_idx = (state->nelems + 1) / 2 - 1;
 
 	if (low_idx == hi_idx)
 		PG_RETURN_FLOAT8(DatumGetFloat8(state->d[low_idx]));
