@@ -3,6 +3,11 @@ RETURNS internal
 AS 'MODULE_PATHNAME', 'median_transfn'
 LANGUAGE C IMMUTABLE;
 
+CREATE OR REPLACE FUNCTION _median_invfn(state internal, val anyelement)
+RETURNS internal
+AS 'MODULE_PATHNAME', 'median_invfn'
+LANGUAGE C IMMUTABLE;
+
 /* numeric types coerced to float8's */
 
 CREATE OR REPLACE FUNCTION _median_double_finalfn(state internal, val double precision)
@@ -16,7 +21,12 @@ CREATE AGGREGATE median (double precision)
     sfunc = _median_transfn,
     stype = internal,
     finalfunc = _median_double_finalfn,
-    finalfunc_extra
+    finalfunc_extra,
+    msfunc = _median_transfn,
+    mstype = internal,
+    minvfunc = _median_invfn,
+    mfinalfunc = _median_double_finalfn,
+    mfinalfunc_extra
 );
 
 /* timestamp with timezone */
@@ -32,7 +42,12 @@ CREATE AGGREGATE median (timestamptz)
     sfunc = _median_transfn,
     stype = internal,
     finalfunc = _median_timestamptz_finalfn,
-    finalfunc_extra
+    finalfunc_extra,
+    msfunc = _median_transfn,
+    mstype = internal,
+    minvfunc = _median_invfn,
+    mfinalfunc = _median_timestamptz_finalfn,
+    mfinalfunc_extra
 );
 
 
@@ -49,6 +64,11 @@ CREATE AGGREGATE median (text)
     sfunc = _median_transfn,
     stype = internal,
     finalfunc = _median_text_finalfn,
-    finalfunc_extra
+    finalfunc_extra,
+    msfunc = _median_transfn,
+    mstype = internal,
+    minvfunc = _median_invfn,
+    mfinalfunc = _median_text_finalfn,
+    mfinalfunc_extra
 );
 

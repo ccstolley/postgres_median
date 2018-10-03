@@ -30,9 +30,10 @@ typedef struct
 	Datum	   *d;
 }			State;
 
-int			float8_cmp(const void *a, const void *b);
-int			timestamp_cmp(const void *a, const void *b);
-int			text_cmp(const void *a, const void *b);
+static void inline swap(Datum *a, Datum *b);
+static int	float8_cmp(const void *a, const void *b);
+static int	timestamp_cmp(const void *a, const void *b);
+static int	text_cmp(const void *a, const void *b);
 
 
 PG_FUNCTION_INFO_V1(median_transfn);
@@ -84,7 +85,7 @@ median_transfn(PG_FUNCTION_ARGS)
 }
 
 /* type-specific comparison functions */
-int
+static int
 float8_cmp(const void *a, const void *b)
 {
 	float8		af = DatumGetFloat8(*(Datum *) a);
@@ -93,7 +94,7 @@ float8_cmp(const void *a, const void *b)
 	return float8_cmp_internal(af, bf);
 }
 
-int
+static int
 timestamp_cmp(const void *a, const void *b)
 {
 	Timestamp	at = DatumGetTimestamp(*(Datum *) a);
@@ -102,7 +103,7 @@ timestamp_cmp(const void *a, const void *b)
 	return timestamptz_cmp_internal(at, bt);
 }
 
-int
+static int
 text_cmp(const void *a, const void *b)
 {
 	Datum		ad = *(Datum *) a;
@@ -214,4 +215,47 @@ median_text_finalfn(PG_FUNCTION_ARGS)
 	qsort(state->d, state->nelems, sizeof(Datum), text_cmp);
 
 	PG_RETURN_TEXT_P(DatumGetTextPP(state->d[state->nelems / 2]));
+}
+
+PG_FUNCTION_INFO_V1(median_invfn);
+
+/*
+ * Median inverse function.
+ *
+ * This removes a datum from the array of accumulated values.
+ */
+Datum
+median_invfn(PG_FUNCTION_ARGS)
+{
+	MemoryContext agg_context;
+	State	   *state = (State *) (PG_ARGISNULL(0) ? NULL : PG_GETARG_BYTEA_P(0));
+	Datum		value;
+
+	if (!AggCheckCallContext(fcinfo, &agg_context))
+		elog(ERROR, "median_invfn called in non-aggregate context");
+
+	if (PG_ARGISNULL(1))
+		PG_RETURN_BYTEA_P(state);
+
+	value = PG_GETARG_DATUM(1);
+
+	for (int i = 0; i < state->nelems; i++)
+	{
+		if (state->d[i] == value)
+		{
+			swap(&state->d[i], &state->d[state->nelems - 1]);
+			state->nelems--;
+			PG_RETURN_BYTEA_P(state);
+		}
+	}
+	elog(ERROR, "Value not found in median_invfn, must be a bug.");
+}
+
+static void inline
+swap(Datum *a, Datum *b)
+{
+	Datum	   *t = a;
+
+	*a = *b;
+	*b = *t;
 }

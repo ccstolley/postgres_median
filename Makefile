@@ -5,7 +5,8 @@ DOCS = README.md
 EXTRA_CLEAN = *~ median.tar.gz
 REGRESS := median
 PG_USER = postgres
-PG_CPPFLAGS = -ggdb -O0 -g3 -fno-omit-frame-pointer
+# for debugging
+#PG_CPPFLAGS = -ggdb -O0 -g3 -fno-omit-frame-pointer
 REGRESS_OPTS := \
 	--load-extension=$(EXTENSION) \
 	--user=$(PG_USER) \
