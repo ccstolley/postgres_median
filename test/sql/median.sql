@@ -71,3 +71,16 @@ INSERT INTO floatvals VALUES
        ('NaN'),
        (1.0);
 SELECT median(val) FROM floatvals;
+
+-- Test window aggregates
+SELECT median(color) OVER (ORDER BY color DESC) FROM textvals;
+
+SELECT median(val) OVER (ORDER BY val DESC) FROM textvals;
+
+SELECT median(val)
+    OVER (ORDER BY val ROWS between CURRENT ROW AND 1 FOLLOWING)
+    FROM intvals;
+
+SELECT median(color)
+    OVER (ORDER BY color ROWS between CURRENT ROW AND 1 FOLLOWING)
+    FROM intvals;

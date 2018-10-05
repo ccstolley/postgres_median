@@ -137,3 +137,64 @@ SELECT median(val) FROM floatvals;
     NaN
 (1 row)
 
+-- Test window aggregates
+SELECT median(color) OVER (ORDER BY color DESC) FROM textvals;
+ median 
+--------
+      9
+    8.5
+      8
+    5.5
+      3
+(5 rows)
+
+SELECT median(val) OVER (ORDER BY val DESC) FROM textvals;
+ median 
+--------
+ rob
+ rob
+ mat
+ mat
+ lee
+(5 rows)
+
+SELECT median(val)
+    OVER (ORDER BY val ROWS between CURRENT ROW AND 1 FOLLOWING)
+    FROM intvals;
+ median 
+--------
+   -1.5
+    0.5
+    1.5
+      2
+      2
+    4.5
+      7
+      8
+     54
+     99
+   49.5
+   49.5
+   49.5
+(13 rows)
+
+SELECT median(color)
+    OVER (ORDER BY color ROWS between CURRENT ROW AND 1 FOLLOWING)
+    FROM intvals;
+ median 
+--------
+ a
+ a
+ b
+ b
+ c
+ c
+ c
+ d
+ d
+ d
+ e
+ e
+ e
+(13 rows)
+

@@ -12,6 +12,8 @@
 #include "utils/float.h"
 #include "utils/timestamp.h"
 #include "utils/varlena.h"
+#include "utils/lsyscache.h"
+#include "utils/datum.h"
 
 
 
@@ -27,6 +29,9 @@ typedef struct
 	Size		alloc_len;		/* allocated length */
 	Size		next_alloc_len; /* next allocated length */
 	Size		nelems;			/* number of valid entries */
+	bool		typ_by_val;		/* compare datum type by value */
+	int16		typ_len;		/* datum type length */
+	Oid			typ_id;         /* datum type oid */
 	Datum	   *d;
 }			State;
 
@@ -47,7 +52,8 @@ PG_FUNCTION_INFO_V1(median_transfn);
 Datum
 median_transfn(PG_FUNCTION_ARGS)
 {
-	MemoryContext agg_context;
+	MemoryContext agg_context,
+				old_context;
 	State	   *state = (State *) (PG_ARGISNULL(0) ? NULL : PG_GETARG_BYTEA_P(0));
 	Datum		value;
 
@@ -58,28 +64,36 @@ median_transfn(PG_FUNCTION_ARGS)
 		PG_RETURN_BYTEA_P(state);
 
 	value = PG_GETARG_DATUM(1);
-
+	old_context = MemoryContextSwitchTo(agg_context);
 
 	if (state == NULL)
 	{
-		state = MemoryContextAllocZero(agg_context, sizeof(State));
-		state->d = MemoryContextAllocZero(agg_context, sizeof(Datum) * 1024);
+		Oid			datum_type = get_fn_expr_argtype(fcinfo->flinfo, 1);
+
+		if (!OidIsValid(datum_type))
+			elog(ERROR, "could not determine data type of input");
+
+
+		state = palloc(sizeof(State));
+		state->d = palloc(sizeof(Datum) * 1024);
 		state->alloc_len = 1024;
 		state->next_alloc_len = 2048;
 		state->nelems = 0;
+		state->typ_id = datum_type;
+
+		get_typlenbyval(datum_type, &state->typ_len, &state->typ_by_val);
 	}
 	else if (state->nelems >= state->alloc_len)
 	{
-		MemoryContext old_context = MemoryContextSwitchTo(agg_context);
-		int			newlen = state->next_alloc_len;
+		Size		newlen = state->next_alloc_len;
 
 		state->next_alloc_len += state->alloc_len;
 		state->alloc_len = newlen;
 		state->d = repalloc(state->d, state->alloc_len * sizeof(Datum));
-		MemoryContextSwitchTo(old_context);
 	}
 
-	state->d[state->nelems++] = value;
+	state->d[state->nelems++] = datumTransfer(value, state->typ_by_val, state->typ_len);
+	MemoryContextSwitchTo(old_context);
 
 	PG_RETURN_BYTEA_P(state);
 }
@@ -241,7 +255,16 @@ median_invfn(PG_FUNCTION_ARGS)
 
 	for (int i = 0; i < state->nelems; i++)
 	{
-		if (state->d[i] == value)
+		Datum		a = state->d[i],
+					b = value;
+
+		if (TypeIsToastable(state->typ_id))
+		{
+			a = (Datum) PG_DETOAST_DATUM(a);
+			b = (Datum) PG_DETOAST_DATUM(b);
+		}
+
+		if (datumIsEqual(a, b, state->typ_by_val, state->typ_len))
 		{
 			swap(&state->d[i], &state->d[state->nelems - 1]);
 			state->nelems--;
