@@ -9,11 +9,11 @@
 #include <postgres.h>
 #include <fmgr.h>
 #include <math.h>
-#include "utils/float.h"
-#include "utils/timestamp.h"
-#include "utils/varlena.h"
-#include "utils/lsyscache.h"
-#include "utils/datum.h"
+#include <utils/float.h>
+#include <utils/timestamp.h>
+#include <utils/varlena.h>
+#include <utils/lsyscache.h>
+#include <utils/datum.h>
 
 
 
@@ -31,7 +31,7 @@ typedef struct
 	Size		nelems;			/* number of valid entries */
 	bool		typ_by_val;		/* compare datum type by value */
 	int16		typ_len;		/* datum type length */
-	Oid			typ_id;         /* datum type oid */
+	Oid			typ_id;			/* datum type oid */
 	Datum	   *d;
 }			State;
 
@@ -122,8 +122,8 @@ text_cmp(const void *a, const void *b)
 {
 	Datum		ad = *(Datum *) a;
 	Datum		bd = *(Datum *) b;
-	struct varlena *arg1 = DatumGetVarStringPP(ad);
-	struct varlena *arg2 = DatumGetVarStringPP(bd);
+	VarString  *arg1 = DatumGetVarStringPP(ad);
+	VarString  *arg2 = DatumGetVarStringPP(bd);
 	char	   *a1p,
 			   *a2p;
 	int			len1,
