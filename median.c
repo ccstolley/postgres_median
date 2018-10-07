@@ -35,7 +35,7 @@ typedef struct
 	Datum	   *d;
 }			State;
 
-static void inline swap(Datum *a, Datum *b);
+static inline void swap(Datum *a, Datum *b);
 static int	float8_cmp(const void *a, const void *b);
 static int	timestamp_cmp(const void *a, const void *b);
 static int	text_cmp(const void *a, const void *b);
@@ -253,7 +253,8 @@ median_invfn(PG_FUNCTION_ARGS)
 
 	value = PG_GETARG_DATUM(1);
 
-	for (int i = 0; i < state->nelems; i++)
+	/* TODO: use bsearch(3) here */
+	for (Size i = 0; i < state->nelems; i++)
 	{
 		Datum		a = state->d[i],
 					b = value;
@@ -274,7 +275,7 @@ median_invfn(PG_FUNCTION_ARGS)
 	elog(ERROR, "Value not found in median_invfn, must be a bug.");
 }
 
-static void inline
+static inline void
 swap(Datum *a, Datum *b)
 {
 	Datum	   *t = a;
